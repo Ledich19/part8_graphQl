@@ -1,11 +1,14 @@
-const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const { ApolloServer, UserInputError, AuthenticationError, gql } = require('apollo-server')
 const { v1: uuid } = require('uuid')
-const Person = require('./models/person')
 const jwt = require('jsonwebtoken')
+
 const mongoose = require('mongoose')
+const Person = require('./models/person')
+const User = require('./models/user')
 
 const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY'
-const MONGODB_URI = 'mongodb+srv://follstack:this_is_password@cluster0.9g99w.mongodb.net/graphQL?retryWrites=true&w=majority'
+
+const MONGODB_URI = '...'
 
 console.log('connecting to', MONGODB_URI)
 
@@ -14,19 +17,10 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true,
     console.log('connected to MongoDB')
   })
   .catch((error) => {
-    console.log('error connection to MongoDB:', error.message)
+    console.log('error connecting to MongoDB:', error.message)
   })
 
 const typeDefs = gql`
-  type User {
-    username: String!
-    friends: [Person!]!
-    id: ID!
-  }
-
-  type Token {
-    value: String!
-  }
   type Person {
     name: String!
     phone: String
@@ -37,9 +31,19 @@ const typeDefs = gql`
     street: String!
     city: String! 
   }
+  
   enum YesNo {
     YES
     NO
+  }
+  type User {
+    username: String!
+    friends: [Person!]!
+    id: ID!
+  }
+  
+  type Token {
+    value: String!
   }
   type Query {
     personCount: Int!
@@ -55,20 +59,20 @@ const typeDefs = gql`
       city: String!
     ): Person
     editNumber(
-        name: String!
-        phone: String!
-      ): Person
-      createUser(
-        username: String!
-      ): User
-      login(
-        username: String!
-        password: String!
-      ): Token
-      addAsFriend(
-        name: String!
-      ): User
-  }
+      name: String!
+      phone: String!
+    ): Person
+    createUser(
+      username: String!
+    ): User
+    login(
+      username: String!
+      password: String!
+    ): Token
+    addAsFriend(
+      name: String!
+    ): User
+  }  
 `
 
 const resolvers = {
@@ -78,12 +82,16 @@ const resolvers = {
       if (!args.phone) {
         return Person.find({})
       }
+  
       return Person.find({ phone: { $exists: args.phone === 'YES'  }})
     },
-    findPerson: (root, args) => Person.findOne({ name: args.name })
+    findPerson: (root, args) => Person.findOne({ name: args.name }),
+    me: (root, args, context) => {
+      return context.currentUser
+    }
   },
   Person: {
-    address: root => {
+    address: (root) => {
       return {
         street: root.street,
         city: root.city
@@ -122,7 +130,6 @@ const resolvers = {
           invalidArgs: args,
         })
       }
-      return person
     },
     createUser: (root, args) => {
       const user = new User({ username: args.username })
@@ -172,12 +179,14 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
   context: async ({ req }) => {
+	  
     const auth = req ? req.headers.authorization : null
     if (auth && auth.toLowerCase().startsWith('bearer ')) {
       const decodedToken = jwt.verify(
         auth.substring(7), JWT_SECRET
       )
-      const currentUser = await User.findById(decodedToken.id).populate('friends')
+      const currentUser = await User
+        .findById(decodedToken.id).populate('friends')
       return { currentUser }
     }
   }

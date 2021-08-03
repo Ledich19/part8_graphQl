@@ -158,7 +158,7 @@ const resolvers = {
     bookCount: () => Book.collection.countDocuments(),
     authorCount: () => Author.collection.countDocuments(),
     allBooks: async (root, args) => {
-      let returnBooks = await Book.find({})
+      let returnBooks = await Book.find({}).populate('author')
       if (args.author) {
         returnBooks = returnBooks.filter((b) => b.author === args.author)
       }
@@ -200,7 +200,8 @@ const resolvers = {
           author = await newAuthor.save()
         }
         const book = new Book({...args, author: author.id})
-        return book.save()
+		const bookSave = book.save()
+        return bookSave
     } catch(error) {
       throw new UserInputError(error.message, {
         invalidArgs: args,
@@ -252,13 +253,13 @@ const resolvers = {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: async ({req}) => {
-    const auth = req ? req.header.authorization : null
-    if (auth && auth.toLowerCase().satrtsWith('bearer')) {
+  context: async ({ req }) => {
+    const auth = req ? req.headers.authorization : null
+    if (auth && auth.toLowerCase().startsWith('bearer ')) {
       const decodedToken = jwt.verify(
         auth.substring(7), JWT_SECRET
       )
-      const currentUser = await User.findById(decodedToken.id)
+      const currentUser = await User.findById(decodedToken.id).populate('friends')
       return { currentUser }
     }
   }

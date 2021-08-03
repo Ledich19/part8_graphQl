@@ -12,7 +12,6 @@ const Authors = (props) => {
     event.preventDefault()
     const born = parseInt(bornTo)
     chengeBorn({ variables: { name, born}})
-    setName('')
     setBornTo('')
   }
   if (!props.show) {
@@ -48,25 +47,27 @@ const Authors = (props) => {
         </tbody>
       </table>
 
-    <form onSubmit={updateAuthor}>
-        <div>
+    { props.token
+    ? <form onSubmit={updateAuthor}>
+    <div>
+    <div>
+    <select  onChange={handleChange}>
+      {authors.map((a) => <option value={a.name} >{a.name}</option>)}
+      </select>
+    </div>
 
-        <div>
-        <select value={name} onChange={handleChange}>
-          {authors.map((a) => <option value={a.name} >{a.name}</option>)}
-          </select>
-        </div>
+      <div>born:
+      <input
+        type='number'
+        value={bornTo}
+        onChange={({ target }) => setBornTo(target.value)}
+      />
+      </div>
+    </div>
+    <button type='submit'>update author</button>
+  </form>
+    : null}
 
-          <div>born:
-          <input
-            type='number'
-            value={bornTo}
-            onChange={({ target }) => setBornTo(target.value)}
-          />
-          </div>
-        </div>
-        <button type='submit'>update author</button>
-      </form>         
     </div>
   )
 }
