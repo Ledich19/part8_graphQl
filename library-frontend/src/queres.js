@@ -10,14 +10,25 @@ query {
     }
   }
   `
+export const ME = gql`
+query{
+  me {
+    favoriteGenre
+    username
+    id
+  }
+}
+`
+
   export const ALL_BOOKS = gql`
-query {
-    allBooks {
+query findBooks ($author: String, $genre: String) {
+    allBooks(author: $author, genre: $genre) {
       title
       published
       author{
         name
       }
+      genres
       id
     }
   }

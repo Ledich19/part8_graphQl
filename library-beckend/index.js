@@ -163,15 +163,16 @@ const resolvers = {
         returnBooks = returnBooks.filter((b) => b.author === args.author)
       }
       if (args.genre) {
-        returnBooks = await Book.find({genres: {$in:  args.genre }})
+        returnBooks = await Book.find({genres: {$in:  args.genre }}).populate('author')
         //returnBooks = returnBooks.filter((b) => b.genres.includes(args.genre))
       }
       return returnBooks
     },
     allAuthors: () => Author.find({}),
-    me: () => (root, args, context) => {
-      return context.currentUser
-    }
+    me: (root, args, context) => {
+        return context.currentUser
+      },
+  
   },
   Author: {
     bookCount: async (root) => {
@@ -259,7 +260,7 @@ const server = new ApolloServer({
       const decodedToken = jwt.verify(
         auth.substring(7), JWT_SECRET
       )
-      const currentUser = await User.findById(decodedToken.id).populate('friends')
+      const currentUser = await User.findById(decodedToken.id)
       return { currentUser }
     }
   }
