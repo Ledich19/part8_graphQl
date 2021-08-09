@@ -52,7 +52,7 @@ const Authors = (props) => {
     <div>
     <div>
     <select  onChange={handleChange}>
-      {authors.map((a) => <option value={a.name} >{a.name}</option>)}
+      {authors.map((a) => <option key={a.id} value={a.name} >{a.name}</option>)}
       </select>
     </div>
 

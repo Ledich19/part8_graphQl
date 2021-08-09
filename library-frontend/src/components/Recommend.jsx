@@ -8,7 +8,6 @@ const Recommend = ({ show , user}) => {
   const [books, setBooks] = useState([])
 
   useEffect(() =>{
-    console.log(user);
     if (user) {
       getBooks({variables: {genre: user.me.favoriteGenre}})
     }

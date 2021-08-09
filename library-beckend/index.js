@@ -1,4 +1,4 @@
-const { ApolloServer, gql, UserInputError } = require('apollo-server')
+const { ApolloServer, gql, UserInputError } = require('apollo-server-express')
 const { v1: uuid } = require('uuid')
 const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
@@ -7,7 +7,16 @@ const Author = require('./models/Author')
 const User = require('./models/user')
 const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY'
 const MONGODB_URI = 'mongodb+srv://follstack:this_is_password@cluster0.9g99w.mongodb.net/Library?retryWrites=true&w=majority'
+const { PubSub } = require('graphql-subscriptions')
 
+const {createServer} = require('http')
+const { execute } = require('graphql')
+const { subscribe } = require('graphql')
+const { SubscriptionServer } = require('subscriptions-transport-ws')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const express = require('express')
+
+const pubsub = new PubSub()
 console.log('connecting to', MONGODB_URI)
 
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
@@ -17,7 +26,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true,
   .catch((error) => {
     console.log('error connection to MongoDB:', error.message)
   })
-
+  mongoose.set('debug', true);
 // let authors = [
 //   {
 //     name: 'Robert Martin',
@@ -151,6 +160,9 @@ type Token {
       password: String!
     ): Token
   }
+  type Subscription {
+    bookAdded: Book!
+  }
 `
 
 const resolvers = {
@@ -164,7 +176,6 @@ const resolvers = {
       }
       if (args.genre) {
         returnBooks = await Book.find({genres: {$in:  args.genre }}).populate('author')
-        //returnBooks = returnBooks.filter((b) => b.genres.includes(args.genre))
       }
       return returnBooks
     },
@@ -201,15 +212,17 @@ const resolvers = {
           author = await newAuthor.save()
         }
         const book = new Book({...args, author: author.id})
-		const bookSave = book.save()
-        return bookSave
+		const addedBook = book.save().then(t => t.populate('author').execPopulate())
+
+        pubsub.publish('BOOK_ADDED', { bookAdded: addedBook})
+        return addedBook
     } catch(error) {
       throw new UserInputError(error.message, {
         invalidArgs: args,
       })
     }
-
     },
+    
     editAuthor: async (root, args,context) => {
       const currentUser = context.currentUser
 
@@ -248,24 +261,79 @@ const resolvers = {
       }
       return { value: jwt.sign(userForToken, JWT_SECRET) }
     }
-  }
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED'])
+    },
+  },
 }
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  context: async ({ req }) => {
-    const auth = req ? req.headers.authorization : null
-    if (auth && auth.toLowerCase().startsWith('bearer ')) {
-      const decodedToken = jwt.verify(
-        auth.substring(7), JWT_SECRET
-      )
-      const currentUser = await User.findById(decodedToken.id)
-      return { currentUser }
-    }
-  }
-})
 
-server.listen().then(({ url }) => {
-  console.log(`Server ready at ${url}`)
-})
+
+
+
+
+async function startApolloServer(typeDefs, resolvers) {
+  const app = express()
+  const httpServer = createServer(app)
+  
+  const schema = makeExecutableSchema({
+    typeDefs,
+    resolvers,
+    context: async ({ req }) => {
+      const auth = req ? req.headers.authorization : null
+      if (auth && auth.toLowerCase().startsWith('bearer ')) {
+        const decodedToken = jwt.verify(
+          auth.substring(7), JWT_SECRET
+        )
+        const currentUser = await User.findById(decodedToken.id)
+        return { currentUser }
+      }
+    }
+  })
+    
+
+  
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+      context: async ({ req }) => {
+        const auth = req ? req.headers.authorization : null
+        if (auth && auth.toLowerCase().startsWith('bearer ')) {
+          const decodedToken = jwt.verify(
+            auth.substring(7), JWT_SECRET
+          )
+          const currentUser = await User.findById(decodedToken.id)
+          return { currentUser }
+        }
+      }
+      })
+      await server.start();
+    
+    server.applyMiddleware({
+       app,
+       path: '/'
+    });
+    
+    
+      const subscriptionServer = SubscriptionServer.create({
+        schema,
+        execute,
+        subscribe,
+     }, {
+        server: httpServer,
+        path: `${server.graphqlPath}graphql`,
+     });
+     
+     ['SIGINT', 'SIGTERM'].forEach(signal => {
+       process.on(signal, () => subscriptionServer.close());
+     });
+
+  await new Promise(resolve => httpServer.listen({ port: 4000 }, resolve));
+  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
+  
+}
+
+
+startApolloServer(typeDefs, resolvers)

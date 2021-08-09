@@ -10,6 +10,20 @@ query {
     }
   }
   `
+  export const BOOK_ADDED = gql`
+  subscription {
+    bookAdded {
+        title
+        published
+        author{
+          name
+          born
+        }
+    }
+  }
+
+`
+
 export const ME = gql`
 query{
   me {
@@ -27,6 +41,7 @@ query findBooks ($author: String, $genre: String) {
       published
       author{
         name
+        born
       }
       genres
       id
@@ -43,7 +58,10 @@ mutation createBook($title: String!, $author: String!, $publishedInt: Int!, $gen
   ) {
     title
     published
-    author
+    author {
+      name
+      born
+    }
     genres
     id
   }
