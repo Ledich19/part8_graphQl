@@ -1,6 +1,6 @@
 import { useQuery } from '@apollo/client'
 import React, { useState } from 'react'
-import { ALL_BOOKS } from '../queres'
+import ALL_BOOKS from '../qraphql/quiries/allBooks'
 
 const Books = (props) => {
 const [filter, setFilter] = useState('all')

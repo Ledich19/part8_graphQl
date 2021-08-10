@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+/Server_apollo
+/client_apollo
+
 # dependencies
 /node_modules
 /.pnp

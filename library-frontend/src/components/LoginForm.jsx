@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useMutation } from '@apollo/client'
-import { LOGIN } from '../queres'
+import  LOGIN from '../qraphql/mutations/loginUser'
 
 const LoginForm = ({setPage, setError, setToken , show}) => {
   const [username, setUsername] = useState('')

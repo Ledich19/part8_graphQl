@@ -1,12 +1,21 @@
   
-import { useMutation } from '@apollo/client'
+import { useMutation, useQuery } from '@apollo/client'
 import React, { useState } from 'react'
-import { ALL_AUTHORS, EDIT_AUTHOR } from '../queres'
+
+import EDIT_AUTHOR from '../qraphql/mutations/addBornToAuthor'
+import ALL_AUTHORS from '../qraphql/quiries/allAuthors'
+
 
 const Authors = (props) => {
   const [name, setName] = useState('')
   const [bornTo, setBornTo] = useState('')
   const [chengeBorn] = useMutation(EDIT_AUTHOR, {refetchQueries: [{ query: ALL_AUTHORS }]})
+
+  const result = useQuery(ALL_AUTHORS)
+  if (result.loading) {
+    return <div>loading...</div>
+  }
+  const authors=result.data.allAuthors
 
   const updateAuthor = (event) => {
     event.preventDefault()
@@ -17,7 +26,6 @@ const Authors = (props) => {
   if (!props.show) {
     return null
   }
-  const authors = props.authors
 
   const handleChange = (event) => {
     setName(event.target.value)

@@ -1,6 +1,7 @@
 import { useMutation } from '@apollo/client'
 import React, { useState } from 'react'
-import { ADD_BOOK, ALL_AUTHORS, ALL_BOOKS } from '../queres'
+import ALL_AUTHORS from '../qraphql/quiries/allAuthors'
+import ADD_BOOK from '../qraphql/mutations/createBook'
 
 const NewBook = ({setError, show, updateCacheWith}) => {
   const [title, setTitle] = useState('')
@@ -17,15 +18,6 @@ const NewBook = ({setError, show, updateCacheWith}) => {
     },
     update: (store, response) => {
       updateCacheWith(response.data.addBook)
-      // const includedIn = (set, object) => 
-      // set.map(p => p.id).includes(object.id) 
-      // const dataInStore = store.readQuery({query: ALL_BOOKS})
-      // if (!includedIn(dataInStore.allBooks, response.data.addBook)) {
-      //   store.writeQuery({
-      //     query: ALL_BOOKS,
-      //     data: { allBooks : dataInStore.allBooks.concat(response.data.addBook) }
-      //   })
-      // }
     }
   }
 )

@@ -10,6 +10,9 @@ type User {
     favoriteGenre: String!
     id: ID!
   }
+  type Token {
+    value: String!
+  }
   extend type Query {
       me: User
     }
@@ -25,6 +28,7 @@ type User {
     }
 `
 const resolvers = {
+  
   Mutation: {
     createUser: async (root,args) => {
       const user = new User({...args})

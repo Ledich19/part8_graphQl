@@ -1,15 +1,15 @@
 import { useLazyQuery } from '@apollo/client'
 import React, { useEffect, useState } from 'react'
-import { ALL_BOOKS} from '../queres'
+import ALL_BOOKS from '../qraphql/quiries/allBooks'
+
 
 const Recommend = ({ show , user}) => {
-  
   const [getBooks, result] = useLazyQuery(ALL_BOOKS) 
   const [books, setBooks] = useState([])
 
   useEffect(() =>{
     if (user) {
-      getBooks({variables: {genre: user.me.favoriteGenre}})
+      getBooks({variables: {genre: user.favoriteGenre}})
     }
   },[user,getBooks])
   useEffect(() =>{

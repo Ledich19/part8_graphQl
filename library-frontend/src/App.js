@@ -1,66 +1,71 @@
 
 import { useApolloClient, useLazyQuery, useQuery, useSubscription } from '@apollo/client'
 import React, { useEffect, useState } from 'react'
+
 import Authors from './components/Authors'
 import Books from './components/Books'
 import LoginForm from './components/LoginForm'
 import NewBook from './components/NewBook'
 import Notifikation from './components/Notifikation'
 import Recommend from './components/Recommend'
-import { ALL_AUTHORS, ALL_BOOKS, BOOK_ADDED, ME } from './queres'
+
+import ALL_BOOKS from './qraphql/quiries/allBooks'
+import ME from './qraphql/quiries/me'
+import BOOK_ADDED from './qraphql/mutations/createBook'
 
 const App = () => {
-  const [token, setToken] = useState(null)
-  const [error, setError] = useState(null)
   const [page, setPage] = useState('authors')
   const [errorMessage, setErrorMessage] = useState(null)
   const [getUser, resultUser] = useLazyQuery(ME) 
-
+  const [token, setToken] = useState(null)
+  const [user, setUser] = useState(null)
   useEffect(() => {
     if (token) {
       getUser()
     }
   },[token,getUser])
-
-const result = useQuery(ALL_AUTHORS)
-const client = useApolloClient()
-const updateCacheWith = (addedBook) => {
-  const includedIn = (set, object) => 
-    set.map(p => p.id).includes(object.id)  
-
-  const dataInStore = client.readQuery({ query: ALL_BOOKS })
-  if (!includedIn(dataInStore.allBooks, addedBook)) {
-    client.writeQuery({
-      query: ALL_BOOKS,
-      data: { allBooks : dataInStore.allBooks.concat(addedBook) }
-    })
-  }   
-}
-
-useSubscription(BOOK_ADDED, {
-  onSubscriptionData: ({ subscriptionData }) => {
-    console.log(subscriptionData)
-    alert(`${subscriptionData.data.bookAdded.title} was added`)
-updateCacheWith(subscriptionData.data.bookAdded)
+  useEffect(() => {
+    if (resultUser.data) {
+      setUser(resultUser.data.me)
+    }
+  },[resultUser])
+  const logout = () => {
+      setToken(null)
+      setUser(null)
+      localStorage.clear()
+      client.resetStore()
   }
-})
+  const handleSetError = (error) => {
+    setErrorMessage(error)
+    setTimeout(() => {
+      setErrorMessage(null)
+    }, 5000)
+  }
 
-const handleSetError = (error) => {
-  setErrorMessage(error)
-  setTimeout(() => {
-    setErrorMessage(null)
-  }, 5000)
-}
 
-const logout = () => {
-    setToken(null)
-    localStorage.clear()
-    client.resetStore()
-}
 
-if (result.loading)  {
-  return <div>loading...</div>
-}
+  const client = useApolloClient()
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) => 
+    set.map(p => p.id).includes(object.id)  
+    
+    const dataInStore = client.readQuery({ query: ALL_BOOKS })
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks : dataInStore.allBooks.concat(addedBook) }
+      })
+    }   
+  }
+  
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      console.log(subscriptionData)
+      alert(`${subscriptionData.data.bookAdded.title} was added`)
+      updateCacheWith(subscriptionData.data.bookAdded)
+    }
+  })
+  
 
   return (
     <div>
@@ -79,7 +84,7 @@ if (result.loading)  {
       </div>
       <Notifikation message={errorMessage} />
       <Authors
-        authors={result.data.allAuthors}
+      
         token={token}
         show={page === 'authors'}
       />
@@ -88,10 +93,10 @@ if (result.loading)  {
       />
     
 { !token  
-  ? <LoginForm show={page === 'login'} setPage={setPage} setToken={setToken} setError={setError}/>
+  ? <LoginForm show={page === 'login'} setPage={setPage} setToken={setToken} setError={handleSetError}/>
   : <div>
     <NewBook updateCacheWith={updateCacheWith} setError={handleSetError} show={page === 'add'}/>
-    <Recommend show={page === 'recommend' } user={resultUser.data}/></div>}
+    <Recommend show={page === 'recommend' } user={user}/></div>}
     </div>
   )
 }
